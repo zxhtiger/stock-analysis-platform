@@ -1,0 +1,36 @@
+# requirements.txt
+# Web框架和服务器
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+# 数据库
+sqlalchemy==2.0.23
+pymysql==1.1.0
+# 数据处理
+pandas==2.1.3
+numpy==1.24.3
+# 模板和认证
+jinja2==3.1.2
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+# 缓存
+redis==5.0.1
+# 定时任务
+schedule==1.2.0
+# 机器学习
+scikit-learn==1.3.2
+# 日期处理
+python-dateutil==2.8.2
+# 图表（去掉不存在的echarts-charts）
+# echarts-charts==0.1.0  # 这个包不存在，去掉
+# 其他工具包
+requests==2.31.0
+# 兼容性修复版本
+pydantic==2.5.0
+typing-extensions==4.8.0
+anyio==3.7.1
+idna==3.4
+sniffio==1.3.0
+starlette==0.27.0
+click==8.1.7
+h11==0.14.0

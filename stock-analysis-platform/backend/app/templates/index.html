@@ -1,0 +1,235 @@
+<!-- backend/app/templates/index.html -->
+{% extends "base.html" %}
+
+{% block title %}首页 - 股票分析平台{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-speedometer"></i> 系统概览</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-primary mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">股票总数</h6>
+                                <h2 id="stock-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-success mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">今日流入</h6>
+                                <h2 id="today-inflow">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-warning mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">高评分股票</h6>
+                                <h2 id="high-score-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-info mb-3">
+                            <div class="card-body">
+                                <h6 class="card-title">预警股票</h6>
+                                <h2 id="alert-count">0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-cash-stack"></i> 今日资金流入Top10</h5>
+            </div>
+            <div class="card-body">
+                <div id="today-inflow-chart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-graph-up-arrow"></i> 高评分股票Top10</h5>
+            </div>
+            <div class="card-body">
+                <div id="top-score-chart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> 最近操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="/capital" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">查看资金流向分析</h6>
+                            <small>刚刚</small>
+                        </div>
+                        <p class="mb-1">分析各板块资金流入流出情况</p>
+                    </a>
+                    <a href="/strategy" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">使用策略选股</h6>
+                            <small>5分钟前</small>
+                        </div>
+                        <p class="mb-1">多种选股策略助您发现投资机会</p>
+                    </a>
+                    <a href="/stock" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">个股详细分析</h6>
+                            <small>10分钟前</small>
+                        </div>
+                        <p class="mb-1">查看个股技术指标和资金流向</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 加载统计数据
+    loadStatistics();
+
+    // 加载图表数据
+    loadTodayInflowChart();
+    loadTopScoreChart();
+});
+
+function loadStatistics() {
+    $.get('/api/v1/stock/search?keyword=&limit=1', function(data) {
+        // 这里简化处理，实际应该从专门的统计接口获取
+        $('#stock-count').text('5000+');
+    });
+
+    // 模拟数据
+    $('#today-inflow').text('12.5亿');
+    $('#high-score-count').text('156');
+    $('#alert-count').text('23');
+}
+
+function loadTodayInflowChart() {
+    const chart = echarts.init(document.getElementById('today-inflow-chart'));
+
+    // 模拟数据
+    const data = [
+        {name: '贵州茅台', value: 2.5},
+        {name: '宁德时代', value: 1.8},
+        {name: '比亚迪', value: 1.5},
+        {name: '东方财富', value: 1.2},
+        {name: '招商银行', value: 1.0},
+        {name: '中国平安', value: 0.9},
+        {name: '五粮液', value: 0.8},
+        {name: '隆基绿能', value: 0.7},
+        {name: '中信证券', value: 0.6},
+        {name: '伊利股份', value: 0.5}
+    ];
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            formatter: '{b}: {c}亿'
+        },
+        xAxis: {
+            type: 'category',
+            data: data.map(item => item.name),
+            axisLabel: {
+                rotate: 45
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '净流入(亿)'
+        },
+        series: [{
+            data: data.map(item => item.value),
+            type: 'bar',
+            itemStyle: {
+                color: function(params) {
+                    return params.value > 0 ? '#28a745' : '#dc3545';
+                }
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function loadTopScoreChart() {
+    const chart = echarts.init(document.getElementById('top-score-chart'));
+
+    // 模拟数据
+    const data = [
+        {name: '000001', score: 92},
+        {name: '000002', score: 88},
+        {name: '000858', score: 85},
+        {name: '002415', score: 82},
+        {name: '300059', score: 80},
+        {name: '600519', score: 78},
+        {name: '300750', score: 76},
+        {name: '002594', score: 75},
+        {name: '601318', score: 73},
+        {name: '000333', score: 70}
+    ];
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            formatter: '股票{b}: {c}分'
+        },
+        xAxis: {
+            type: 'category',
+            data: data.map(item => item.name),
+            axisLabel: {
+                rotate: 45
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '综合评分',
+            max: 100
+        },
+        series: [{
+            data: data.map(item => item.score),
+            type: 'bar',
+            itemStyle: {
+                color: function(params) {
+                    const score = params.value;
+                    if (score >= 80) return '#28a745';
+                    if (score >= 70) return '#ffc107';
+                    if (score >= 60) return '#6c757d';
+                    return '#dc3545';
+                }
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+</script>
+{% endblock %}

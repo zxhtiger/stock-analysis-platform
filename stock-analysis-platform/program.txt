@@ -1,0 +1,51 @@
+stock-analysis-platform/
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── v1/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── capital.py      # 资金流向API
+│   │   │   │   ├── stock.py        # 股票分析API
+│   │   │   │   ├── block.py        # 板块分析API
+│   │   │   │   └── strategy.py     # 策略API
+│   │   │   └── __init__.py
+│   │   ├── core/
+│   │   │   ├── __init__.py
+│   │   │   ├── database.py         # 数据库连接
+│   │   │   ├── config.py           # 配置文件
+│   │   │   └── security.py         # 安全验证
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   ├── capital_flow.py     # 资金流向模型
+│   │   │   ├── stock_analysis.py   # 股票分析模型
+│   │   │   └── scoring_model.py    # 评分模型
+│   │   ├── services/
+│   │   │   ├── __init__.py
+│   │   │   ├── analysis_service.py # 分析服务
+│   │   │   ├── scoring_service.py  # 评分服务
+│   │   │   ├── cost_analysis_service.py  # 成本分析服务
+│   │   │   └── alert_service.py    # 预警服务
+│   │   ├── utils/
+│   │   │   ├── __init__.py
+│   │   │   ├── indicators.py       # 技术指标计算
+│   │   │   └── data_processor.py   # 数据处理
+│   │   ├── templates/              # HTML模板
+│   │   │   ├── base.html           # 基础模板
+│   │   │   ├── index.html          # 首页
+│   │   │   ├── capital.html        # 资金流向页
+│   │   │   ├── stock.html          # 股票分析页
+│   │   │   ├── strategy.html       # 策略页面
+│   │   │   └── dashboard.html      # 仪表板
+│   │   ├── static/                 # 静态文件
+│   │   │   ├── css/
+│   │   │   │   └── style.css       # 样式文件
+│   │   │   ├── js/
+│   │   │   │   └── chart.js        # 图表JS
+│   │   │   └── images/
+│   │   ├── main.py                 # 主程序入口
+│   │   └── scheduler.py            # 定时任务
+├── config/
+│   ├── __init__.py
+│   └── settings.py                  # 项目配置
+├── requirements.txt                 # 依赖包
+└── run.py                          # 启动脚本

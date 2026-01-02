@@ -1,0 +1,746 @@
+<!-- backend/app/templates/stock.html -->
+{% extends "base.html" %}
+
+{% block title %}股票分析 - 股票分析平台{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-search"></i> 股票搜索</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                            <input type="text" class="form-control" id="stock-search"
+                                   placeholder="输入股票代码或名称，例如：000001 或 平安银行">
+                            <button class="btn btn-primary" type="button" onclick="searchStock()">
+                                <i class="bi bi-search"></i> 搜索
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select" id="quick-select">
+                            <option value="">快速选择热门股票</option>
+                            <option value="000001">000001 - 平安银行</option>
+                            <option value="000858">000858 - 五粮液</option>
+                            <option value="002415">002415 - 海康威视</option>
+                            <option value="300059">300059 - 东方财富</option>
+                            <option value="600519">600519 - 贵州茅台</option>
+                            <option value="300750">300750 - 宁德时代</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-2" id="search-results"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row" id="stock-analysis" style="display: none;">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 id="stock-title">股票分析</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab"
+                                data-bs-target="#overview" type="button">概览</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="technical-tab" data-bs-toggle="tab"
+                                data-bs-target="#technical" type="button">技术分析</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="capital-tab" data-bs-toggle="tab"
+                                data-bs-target="#capital" type="button">资金流向</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cost-tab" data-bs-toggle="tab"
+                                data-bs-target="#cost" type="button">持股成本</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="score-tab" data-bs-toggle="tab"
+                                data-bs-target="#score" type="button">综合评分</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content mt-3" id="analysisContent">
+                    <!-- 概览标签页 -->
+                    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6>基本信息</h6>
+                                        <div id="basic-info"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6>价格走势</h6>
+                                        <div id="price-chart" style="height: 300px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 技术分析标签页 -->
+                    <div class="tab-pane fade" id="technical" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="technical-chart" style="height: 400px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 资金流向标签页 -->
+                    <div class="tab-pane fade" id="capital" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="capital-chart" style="height: 400px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 持股成本标签页 -->
+                    <div class="tab-pane fade" id="cost" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="cost-analysis-content"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 综合评分标签页 -->
+                    <div class="tab-pane fade" id="score" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="score-analysis-content"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 绑定快速选择事件
+    $('#quick-select').change(function() {
+        const stockCode = $(this).val();
+        if (stockCode) {
+            $('#stock-search').val(stockCode);
+            searchStock();
+        }
+    });
+
+    // 绑定搜索框回车事件
+    $('#stock-search').keypress(function(e) {
+        if (e.which === 13) {
+            searchStock();
+        }
+    });
+});
+
+function searchStock() {
+    const keyword = $('#stock-search').val().trim();
+    if (!keyword) {
+        alert('请输入股票代码或名称');
+        return;
+    }
+
+    $.get('/api/v1/stock/search', { keyword: keyword, limit: 10 }, function(response) {
+        if (response.code === 0 && response.data.stocks.length > 0) {
+            if (response.data.stocks.length === 1) {
+                // 只有一只股票，直接显示
+                loadStockAnalysis(response.data.stocks[0].stock_code);
+            } else {
+                // 显示搜索结果
+                showSearchResults(response.data.stocks);
+            }
+        } else {
+            $('#search-results').html('<div class="alert alert-warning">未找到相关股票</div>');
+        }
+    });
+}
+
+function showSearchResults(stocks) {
+    let html = '<div class="list-group">';
+    stocks.forEach(stock => {
+        const changeClass = stock.change_pct > 0 ? 'text-success' : 'text-danger';
+        const changeIcon = stock.change_pct > 0 ? 'bi-arrow-up' : 'bi-arrow-down';
+
+        html += `
+            <a href="#" class="list-group-item list-group-item-action"
+               onclick="loadStockAnalysis('${stock.stock_code}')">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${stock.stock_name} (${stock.stock_code})</h6>
+                    <small class="${changeClass}">
+                        <i class="bi ${changeIcon}"></i> ${stock.change_pct.toFixed(2)}%
+                    </small>
+                </div>
+                <p class="mb-1">
+                    收盘价: ${stock.close_price.toFixed(2)} |
+                    净流入: ${formatAmount(stock.net_inflow)}
+                </p>
+            </a>
+        `;
+    });
+    html += '</div>';
+
+    $('#search-results').html(html);
+}
+
+function loadStockAnalysis(stockCode) {
+    $('#search-results').empty();
+    $('#stock-analysis').show();
+
+    // 获取股票详情
+    $.get(`/api/v1/stock/${stockCode}/details`, function(response) {
+        if (response.code === 0) {
+            const stock = response.data;
+            $('#stock-title').text(`${stock.stock_name} (${stock.stock_code}) 分析`);
+
+            // 更新基本信息
+            updateBasicInfo(stock);
+
+            // 更新价格图表
+            updatePriceChart(stock);
+
+            // 更新技术分析图表
+            updateTechnicalChart(stock);
+
+            // 更新资金流向图表
+            updateCapitalChart(stock);
+
+            // 加载成本分析
+            loadCostAnalysis(stockCode);
+
+            // 加载评分分析
+            loadScoreAnalysis(stockCode);
+        }
+    });
+}
+
+function updateBasicInfo(stock) {
+    const latestPrice = stock.prices[stock.prices.length - 1];
+    const latestInflow = stock.inflows[stock.inflows.length - 1];
+
+    let html = `
+        <table class="table table-sm">
+            <tr><td>当前价格:</td><td class="text-end">${latestPrice.close.toFixed(2)}</td></tr>
+            <tr><td>今日涨跌:</td><td class="text-end">${((latestPrice.close - latestPrice.open) / latestPrice.open * 100).toFixed(2)}%</td></tr>
+            <tr><td>成交额:</td><td class="text-end">${formatAmount(latestPrice.amount)}</td></tr>
+            <tr><td>成交量:</td><td class="text-end">${formatVolume(latestPrice.volume)}</td></tr>
+            <tr><td>净流入:</td><td class="text-end ${latestInflow.net_inflow > 0 ? 'text-success' : 'text-danger'}">
+                ${formatAmount(latestInflow.net_inflow)}
+            </td></tr>
+            <tr><td>流入比例:</td><td class="text-end ${latestInflow.inflow_ratio > 0 ? 'text-success' : 'text-danger'}">
+                ${latestInflow.inflow_ratio.toFixed(2)}%
+            </td></tr>
+        </table>
+    `;
+
+    $('#basic-info').html(html);
+}
+
+function updatePriceChart(stock) {
+    const chart = echarts.init(document.getElementById('price-chart'));
+
+    const dates = stock.dates;
+    const prices = stock.prices;
+
+    const closePrices = prices.map(p => p.close);
+    const volumes = prices.map(p => p.volume);
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross'
+            }
+        },
+        legend: {
+            data: ['收盘价', '成交量']
+        },
+        xAxis: [{
+            type: 'category',
+            data: dates,
+            axisLabel: {
+                rotate: 45
+            }
+        }],
+        yAxis: [{
+            type: 'value',
+            name: '价格',
+            position: 'left'
+        }, {
+            type: 'value',
+            name: '成交量',
+            position: 'right'
+        }],
+        series: [{
+            name: '收盘价',
+            type: 'line',
+            data: closePrices,
+            smooth: true,
+            lineStyle: {
+                width: 2
+            },
+            itemStyle: {
+                color: '#007bff'
+            }
+        }, {
+            name: '成交量',
+            type: 'bar',
+            yAxisIndex: 1,
+            data: volumes,
+            itemStyle: {
+                color: '#6c757d'
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function updateTechnicalChart(stock) {
+    const chart = echarts.init(document.getElementById('technical-chart'));
+
+    const dates = stock.dates;
+    const prices = stock.prices;
+    const indicators = stock.technical_indicators;
+
+    const closePrices = prices.map(p => p.close);
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross'
+            }
+        },
+        legend: {
+            data: ['收盘价', 'MA5', 'MA20', 'MA60', 'RSI']
+        },
+        grid: [
+            {
+                left: '10%',
+                right: '10%',
+                top: '10%',
+                height: '60%'
+            },
+            {
+                left: '10%',
+                right: '10%',
+                top: '75%',
+                height: '15%'
+            }
+        ],
+        xAxis: [
+            {
+                type: 'category',
+                data: dates,
+                gridIndex: 0,
+                axisLabel: {
+                    rotate: 45
+                }
+            },
+            {
+                type: 'category',
+                data: dates,
+                gridIndex: 1,
+                show: false
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                gridIndex: 0,
+                name: '价格'
+            },
+            {
+                type: 'value',
+                gridIndex: 1,
+                name: 'RSI',
+                min: 0,
+                max: 100
+            }
+        ],
+        series: [
+            {
+                name: '收盘价',
+                type: 'line',
+                xAxisIndex: 0,
+                yAxisIndex: 0,
+                data: closePrices,
+                smooth: true,
+                lineStyle: {
+                    width: 2
+                },
+                itemStyle: {
+                    color: '#007bff'
+                }
+            },
+            {
+                name: 'MA5',
+                type: 'line',
+                xAxisIndex: 0,
+                yAxisIndex: 0,
+                data: indicators.ma5,
+                smooth: true,
+                lineStyle: {
+                    width: 1
+                },
+                itemStyle: {
+                    color: '#ff6b6b'
+                }
+            },
+            {
+                name: 'MA20',
+                type: 'line',
+                xAxisIndex: 0,
+                yAxisIndex: 0,
+                data: indicators.ma20,
+                smooth: true,
+                lineStyle: {
+                    width: 1
+                },
+                itemStyle: {
+                    color: '#51cf66'
+                }
+            },
+            {
+                name: 'MA60',
+                type: 'line',
+                xAxisIndex: 0,
+                yAxisIndex: 0,
+                data: indicators.ma60,
+                smooth: true,
+                lineStyle: {
+                    width: 1
+                },
+                itemStyle: {
+                    color: '#ff922b'
+                }
+            },
+            {
+                name: 'RSI',
+                type: 'line',
+                xAxisIndex: 1,
+                yAxisIndex: 1,
+                data: indicators.rsi,
+                smooth: true,
+                lineStyle: {
+                    width: 1
+                },
+                itemStyle: {
+                    color: '#be4bdb'
+                }
+            }
+        ]
+    };
+
+    chart.setOption(option);
+}
+
+function updateCapitalChart(stock) {
+    const chart = echarts.init(document.getElementById('capital-chart'));
+
+    const dates = stock.dates;
+    const inflows = stock.inflows;
+
+    const netInflows = inflows.map(i => i.net_inflow);
+    const inflowRatios = inflows.map(i => i.inflow_ratio);
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross'
+            }
+        },
+        legend: {
+            data: ['净流入', '流入比例']
+        },
+        grid: [
+            {
+                left: '10%',
+                right: '10%',
+                top: '10%',
+                height: '60%'
+            },
+            {
+                left: '10%',
+                right: '10%',
+                top: '75%',
+                height: '15%'
+            }
+        ],
+        xAxis: [
+            {
+                type: 'category',
+                data: dates,
+                gridIndex: 0,
+                axisLabel: {
+                    rotate: 45
+                }
+            },
+            {
+                type: 'category',
+                data: dates,
+                gridIndex: 1,
+                show: false
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                gridIndex: 0,
+                name: '净流入(万)'
+            },
+            {
+                type: 'value',
+                gridIndex: 1,
+                name: '比例(%)'
+            }
+        ],
+        series: [
+            {
+                name: '净流入',
+                type: 'bar',
+                xAxisIndex: 0,
+                yAxisIndex: 0,
+                data: netInflows.map(value => value / 10000),
+                itemStyle: {
+                    color: function(params) {
+                        return params.value > 0 ? '#28a745' : '#dc3545';
+                    }
+                }
+            },
+            {
+                name: '流入比例',
+                type: 'line',
+                xAxisIndex: 1,
+                yAxisIndex: 1,
+                data: inflowRatios,
+                smooth: true,
+                lineStyle: {
+                    width: 2
+                },
+                itemStyle: {
+                    color: '#007bff'
+                }
+            }
+        ]
+    };
+
+    chart.setOption(option);
+}
+
+function loadCostAnalysis(stockCode) {
+    $.get(`/api/v1/stock/${stockCode}/cost-analysis`, { days: 60 }, function(response) {
+        if (response.code === 0) {
+            displayCostAnalysis(response.data);
+        }
+    });
+}
+
+function displayCostAnalysis(data) {
+    let html = `
+        <h6>持股成本分析</h6>
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td>最新买方成本:</td><td class="text-end">${data.latest_cost.buy_vwap.toFixed(2)}</td></tr>
+                    <tr><td>最新卖方价格:</td><td class="text-end">${data.latest_cost.sell_vwap.toFixed(2)}</td></tr>
+                    <tr><td>买卖价差:</td><td class="text-end">${data.latest_cost.vwap_spread.toFixed(2)}</td></tr>
+                    <tr><td>成本压力:</td><td class="text-end">${data.latest_cost.cost_pressure.toFixed(2)}%</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+    `;
+
+    for (const [period, cost] of Object.entries(data.multi_day_averages)) {
+        html += `<tr><td>${period}平均成本:</td><td class="text-end">${cost.avg_buy_vwap.toFixed(2)}</td></tr>`;
+    }
+
+    html += `
+                </table>
+            </div>
+        </div>
+        <div id="cost-chart" style="height: 300px;"></div>
+    `;
+
+    $('#cost-analysis-content').html(html);
+
+    // 绘制成本图表
+    const chart = echarts.init(document.getElementById('cost-chart'));
+    const history = data.cost_history.slice(0, 30); // 显示最近30天
+
+    const dates = history.map(h => h.date);
+    const buyVwaps = history.map(h => h.buy_vwap);
+
+    const option = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        xAxis: {
+            type: 'category',
+            data: dates,
+            axisLabel: {
+                rotate: 45
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '持股成本'
+        },
+        series: [{
+            data: buyVwaps,
+            type: 'line',
+            smooth: true,
+            lineStyle: {
+                width: 2
+            },
+            itemStyle: {
+                color: '#007bff'
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function loadScoreAnalysis(stockCode) {
+    $.get(`/api/v1/stock/${stockCode}/score`, function(response) {
+        if (response.code === 0) {
+            displayScoreAnalysis(response.data);
+        }
+    });
+}
+
+function displayScoreAnalysis(data) {
+    const scores = data.scores;
+
+    let html = `
+        <h6>综合评分: <span class="badge bg-success">${scores.total.toFixed(1)}分</span></h6>
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td>资金面评分:</td><td class="text-end">${scores.capital.toFixed(1)}</td></tr>
+                    <tr><td>技术面评分:</td><td class="text-end">${scores.technical.toFixed(1)}</td></tr>
+                    <tr><td>基本面评分:</td><td class="text-end">${scores.fundamental.toFixed(1)}</td></tr>
+                    <tr><td>风险面评分:</td><td class="text-end">${scores.risk.toFixed(1)}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <div id="score-radar" style="height: 200px;"></div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <h6>分析建议</h6>
+            <div class="alert ${getSignalAlertClass(data.signal.type)}">
+                <strong>${data.signal.description}</strong>
+                <br>信号强度: ${'★'.repeat(data.signal.strength)}${'☆'.repeat(3 - data.signal.strength)}
+            </div>
+        </div>
+    `;
+
+    $('#score-analysis-content').html(html);
+
+    // 绘制雷达图
+    const chart = echarts.init(document.getElementById('score-radar'));
+
+    const option = {
+        radar: {
+            indicator: [
+                { name: '资金面', max: 100 },
+                { name: '技术面', max: 100 },
+                { name: '基本面', max: 100 },
+                { name: '风险面', max: 100 }
+            ]
+        },
+        series: [{
+            type: 'radar',
+            data: [{
+                value: [scores.capital, scores.technical, scores.fundamental, scores.risk],
+                name: '综合评分'
+            }],
+            areaStyle: {
+                color: 'rgba(0, 123, 255, 0.3)'
+            },
+            lineStyle: {
+                width: 2
+            },
+            itemStyle: {
+                color: '#007bff'
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function getSignalAlertClass(signalType) {
+    const classes = {
+        'strong_buy': 'alert-success',
+        'buy': 'alert-info',
+        'watch': 'alert-primary',
+        'hold': 'alert-secondary',
+        'reduce': 'alert-warning',
+        'sell': 'alert-danger',
+        'strong_sell': 'alert-dark'
+    };
+    return classes[signalType] || 'alert-secondary';
+}
+
+function formatAmount(amount) {
+    if (amount >= 100000000) {
+        return (amount / 100000000).toFixed(2) + '亿';
+    } else if (amount >= 10000) {
+        return (amount / 10000).toFixed(2) + '万';
+    }
+    return amount.toFixed(2);
+}
+
+function formatVolume(volume) {
+    if (volume >= 100000000) {
+        return (volume / 100000000).toFixed(2) + '亿手';
+    } else if (volume >= 10000) {
+        return (volume / 10000).toFixed(2) + '万手';
+    }
+    return volume + '手';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,367 @@
+<!-- backend/app/templates/capital.html -->
+{% extends "base.html" %}
+
+{% block title %}资金流向分析 - 股票分析平台{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-funnel"></i> 筛选条件</h5>
+            </div>
+            <div class="card-body">
+                <form id="filter-form" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="trade-date" class="form-label">交易日期</label>
+                        <input type="date" class="form-control" id="trade-date" value="{{ today }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="analysis-days" class="form-label">分析天数</label>
+                        <select class="form-select" id="analysis-days">
+                            <option value="3">3日</option>
+                            <option value="5">5日</option>
+                            <option value="7" selected>7日</option>
+                            <option value="10">10日</option>
+                            <option value="20">20日</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="block-type" class="form-label">板块类型</label>
+                        <select class="form-select" id="block-type">
+                            <option value="">全部</option>
+                            <option value="industry">行业</option>
+                            <option value="concept">概念</option>
+                            <option value="region">地区</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="sort-by" class="form-label">排序方式</label>
+                        <select class="form-select" id="sort-by">
+                            <option value="inflow_ratio">流入比例</option>
+                            <option value="net_inflow">净流入金额</option>
+                            <option value="continuity_days">连续天数</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> 查询
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-bar-chart"></i> 板块资金流向排名</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="block-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>板块名称</th>
+                                <th>板块类型</th>
+                                <th>流入比例</th>
+                                <th>净流入(亿)</th>
+                                <th>连续天数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="block-data">
+                            <!-- 数据通过JS加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status" id="loading-spinner">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-pie-chart"></i> 板块类型分布</h5>
+            </div>
+            <div class="card-body">
+                <div id="block-type-chart" style="height: 250px;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> 统计信息</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <small class="text-muted">总板块数:</small>
+                    <h6 id="total-blocks">0</h6>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">资金流入板块:</small>
+                    <h6 id="inflow-blocks">0</h6>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">平均流入比例:</small>
+                    <h6 id="avg-inflow-ratio">0%</h6>
+                </div>
+                <div>
+                    <small class="text-muted">最大连续流入:</small>
+                    <h6 id="max-continuity">0天</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 板块详情模态框 -->
+<div class="modal fade" id="blockDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="blockDetailTitle">板块详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="block-detail-content">
+                    <!-- 详情内容通过JS加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 初始化日期选择器
+    const today = new Date().toISOString().split('T')[0];
+    $('#trade-date').val(today);
+
+    // 加载数据
+    loadBlockData();
+
+    // 绑定表单提交事件
+    $('#filter-form').submit(function(e) {
+        e.preventDefault();
+        loadBlockData();
+    });
+});
+
+function loadBlockData() {
+    $('#loading-spinner').show();
+    $('#block-data').empty();
+
+    const params = {
+        trade_date: $('#trade-date').val(),
+        days: $('#analysis-days').val(),
+        block_type: $('#block-type').val(),
+        limit: 20
+    };
+
+    $.get('/api/v1/capital/block-flows', params, function(response) {
+        if (response.code === 0) {
+            displayBlockData(response.data.blocks);
+            updateStatistics(response.data.blocks);
+            updateBlockTypeChart(response.data.blocks);
+        }
+        $('#loading-spinner').hide();
+    }).fail(function() {
+        alert('数据加载失败');
+        $('#loading-spinner').hide();
+    });
+}
+
+function displayBlockData(blocks) {
+    const tbody = $('#block-data');
+    tbody.empty();
+
+    blocks.forEach((block, index) => {
+        const row = `
+            <tr>
+                <td>${index + 1}</td>
+                <td>
+                    <strong>${block.block_name}</strong>
+                    <br><small class="text-muted">${block.block_code}</small>
+                </td>
+                <td>
+                    <span class="badge ${getBlockTypeBadge(block.block_type)}">
+                        ${block.block_type || '未知'}
+                    </span>
+                </td>
+                <td>
+                    <span class="${block.avg_inflow_ratio > 0 ? 'text-success' : 'text-danger'}">
+                        <i class="bi ${block.avg_inflow_ratio > 0 ? 'bi-arrow-up' : 'bi-arrow-down'}"></i>
+                        ${block.avg_inflow_ratio.toFixed(2)}%
+                    </span>
+                </td>
+                <td>
+                    ${formatAmount(block.latest_flow?.net_inflow || 0)}
+                </td>
+                <td>
+                    <span class="badge bg-info">${block.continuity_days}天</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showBlockDetail('${block.block_code}')">
+                        <i class="bi bi-eye"></i> 详情
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" onclick="showBlockStocks('${block.block_code}')">
+                        <i class="bi bi-list"></i> 股票
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+function getBlockTypeBadge(type) {
+    const badges = {
+        'industry': 'bg-success',
+        'concept': 'bg-warning',
+        'region': 'bg-info',
+        'style': 'bg-secondary',
+        'index': 'bg-dark'
+    };
+    return badges[type] || 'bg-secondary';
+}
+
+function formatAmount(amount) {
+    if (amount >= 100000000) {
+        return (amount / 100000000).toFixed(2) + '亿';
+    } else if (amount >= 10000) {
+        return (amount / 10000).toFixed(2) + '万';
+    }
+    return amount.toFixed(2);
+}
+
+function updateStatistics(blocks) {
+    $('#total-blocks').text(blocks.length);
+
+    const inflowBlocks = blocks.filter(b => b.avg_inflow_ratio > 0).length;
+    $('#inflow-blocks').text(inflowBlocks);
+
+    const avgInflowRatio = blocks.reduce((sum, b) => sum + b.avg_inflow_ratio, 0) / blocks.length;
+    $('#avg-inflow-ratio').text(avgInflowRatio.toFixed(2) + '%');
+
+    const maxContinuity = Math.max(...blocks.map(b => b.continuity_days));
+    $('#max-continuity').text(maxContinuity + '天');
+}
+
+function updateBlockTypeChart(blocks) {
+    const chart = echarts.init(document.getElementById('block-type-chart'));
+
+    const typeCount = {};
+    blocks.forEach(block => {
+        const type = block.block_type || '其他';
+        typeCount[type] = (typeCount[type] || 0) + 1;
+    });
+
+    const data = Object.entries(typeCount).map(([name, value]) => ({
+        name: name,
+        value: value
+    }));
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        legend: {
+            orient: 'vertical',
+            left: 'left'
+        },
+        series: [{
+            name: '板块类型',
+            type: 'pie',
+            radius: '50%',
+            data: data,
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function showBlockDetail(blockCode) {
+    $.get(`/api/v1/block/${blockCode}/history?days=30`, function(response) {
+        if (response.code === 0) {
+            const block = response.data;
+            $('#blockDetailTitle').text(`${block.block_name} - 历史资金流向`);
+
+            let content = `
+                <div class="mb-3">
+                    <h6>板块信息</h6>
+                    <p>代码: ${block.block_code}<br>
+                       类型: ${block.block_type}<br>
+                       分析天数: 30天</p>
+                </div>
+            `;
+
+            // 创建历史图表
+            content += '<div id="block-history-chart" style="height: 300px;"></div>';
+
+            $('#block-detail-content').html(content);
+
+            // 初始化图表
+            const chart = echarts.init(document.getElementById('block-history-chart'));
+            const dates = block.history.map(h => h.date);
+            const inflows = block.history.map(h => h.inflow_ratio);
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    axisLabel: {
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '流入比例(%)'
+                },
+                series: [{
+                    data: inflows,
+                    type: 'line',
+                    smooth: true,
+                    lineStyle: {
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#007bff'
+                    }
+                }]
+            };
+
+            chart.setOption(option);
+
+            $('#blockDetailModal').modal('show');
+        }
+    });
+}
+
+function showBlockStocks(blockCode) {
+    window.location.href = `/block/${blockCode}/stocks`;
+}
+</script>
+{% endblock %}

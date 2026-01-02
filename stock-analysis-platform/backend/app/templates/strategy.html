@@ -1,0 +1,569 @@
+<!-- backend/app/templates/strategy.html -->
+{% extends "base.html" %}
+
+{% block title %}策略选股 - 股票分析平台{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-gear"></i> 策略选择</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card strategy-card" onclick="loadStrategy('top-scoring')">
+                            <div class="card-body text-center">
+                                <i class="bi bi-star-fill text-warning" style="font-size: 2rem;"></i>
+                                <h5 class="card-title mt-2">高评分策略</h5>
+                                <p class="card-text">基于综合评分模型，选择评分最高的股票</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card strategy-card" onclick="loadStrategy('capital-flow')">
+                            <div class="card-body text-center">
+                                <i class="bi bi-cash-coin text-success" style="font-size: 2rem;"></i>
+                                <h5 class="card-title mt-2">资金流向策略</h5>
+                                <p class="card-text">选择资金连续流入且流入比例高的股票</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card strategy-card" onclick="loadStrategy('breakout')">
+                            <div class="card-body text-center">
+                                <i class="bi bi-graph-up-arrow text-primary" style="font-size: 2rem;"></i>
+                                <h5 class="card-title mt-2">突破策略</h5>
+                                <p class="card-text">选择突破关键均线且放量的股票</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-sliders"></i> 策略参数</h5>
+            </div>
+            <div class="card-body">
+                <form id="strategy-form">
+                    <div id="top-scoring-params" class="strategy-params">
+                        <div class="mb-3">
+                            <label for="min-score" class="form-label">最低评分</label>
+                            <input type="range" class="form-range" id="min-score" min="50" max="90" value="70">
+                            <div class="d-flex justify-content-between">
+                                <small>50</small>
+                                <span id="min-score-value">70</span>
+                                <small>90</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="max-count" class="form-label">最大数量</label>
+                            <select class="form-select" id="max-count">
+                                <option value="20">20只</option>
+                                <option value="50" selected>50只</option>
+                                <option value="100">100只</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="capital-flow-params" class="strategy-params" style="display: none;">
+                        <div class="mb-3">
+                            <label for="min-inflow-ratio" class="form-label">最小流入比例(%)</label>
+                            <input type="range" class="form-range" id="min-inflow-ratio" min="0" max="5" step="0.5" value="1">
+                            <div class="d-flex justify-content-between">
+                                <small>0</small>
+                                <span id="min-inflow-ratio-value">1.0</span>
+                                <small>5.0</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="min-continuity-days" class="form-label">最小连续流入天数</label>
+                            <select class="form-select" id="min-continuity-days">
+                                <option value="1">1天</option>
+                                <option value="2">2天</option>
+                                <option value="3" selected>3天</option>
+                                <option value="5">5天</option>
+                                <option value="7">7天</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="cf-max-count" class="form-label">最大数量</label>
+                            <select class="form-select" id="cf-max-count">
+                                <option value="10">10只</option>
+                                <option value="20" selected>20只</option>
+                                <option value="50">50只</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="breakout-params" class="strategy-params" style="display: none;">
+                        <div class="mb-3">
+                            <label for="ma-period" class="form-label">均线周期</label>
+                            <select class="form-select" id="ma-period">
+                                <option value="5">MA5</option>
+                                <option value="10">MA10</option>
+                                <option value="20" selected>MA20</option>
+                                <option value="30">MA30</option>
+                                <option value="60">MA60</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="volume-ratio" class="form-label">量比阈值</label>
+                            <input type="range" class="form-range" id="volume-ratio" min="0.8" max="2" step="0.1" value="1.2">
+                            <div class="d-flex justify-content-between">
+                                <small>0.8</small>
+                                <span id="volume-ratio-value">1.2</span>
+                                <small>2.0</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="breakout-max-count" class="form-label">最大数量</label>
+                            <select class="form-select" id="breakout-max-count">
+                                <option value="10">10只</option>
+                                <option value="20" selected>20只</option>
+                                <option value="50">50只</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="trade-date" class="form-label">交易日期</label>
+                        <input type="date" class="form-control" id="trade-date" value="{{ today }}">
+                    </div>
+
+                    <button type="button" class="btn btn-primary w-100" onclick="runStrategy()">
+                        <i class="bi bi-play-circle"></i> 运行策略
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> 策略说明</h5>
+            </div>
+            <div class="card-body">
+                <div id="strategy-description">
+                    <h6>高评分策略</h6>
+                    <p>基于多维度评分模型，综合考虑资金面、技术面、基本面和风险面，选出综合评分最高的股票。</p>
+                    <ul>
+                        <li>资金面(40%): 资金流入情况</li>
+                        <li>技术面(30%): 技术指标和趋势</li>
+                        <li>基本面(20%): 板块和行业地位</li>
+                        <li>风险面(10%): 波动性和流动性</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-list-check"></i> 策略结果</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 id="strategy-result-title">请选择策略并运行</h6>
+                    <p id="strategy-result-desc" class="text-muted">策略运行结果将在此显示</p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover" id="strategy-result-table">
+                        <thead>
+                            <tr>
+                                <th>股票代码</th>
+                                <th>股票名称</th>
+                                <th>收盘价</th>
+                                <th>涨跌幅</th>
+                                <th>评分/信号</th>
+                                <th>关键指标</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="strategy-result-data">
+                            <!-- 数据通过JS加载 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status" id="strategy-loading" style="display: none;">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+
+                <div id="strategy-charts" style="display: none;">
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>评分分布</h6>
+                                    <div id="score-distribution-chart" style="height: 250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>板块分布</h6>
+                                    <div id="block-distribution-chart" style="height: 250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentStrategy = 'top-scoring';
+
+$(document).ready(function() {
+    // 初始化日期选择器
+    $('#trade-date').val('{{ today }}');
+
+    // 绑定滑块事件
+    $('#min-score').on('input', function() {
+        $('#min-score-value').text($(this).val());
+    });
+
+    $('#min-inflow-ratio').on('input', function() {
+        $('#min-inflow-ratio-value').text($(this).val());
+    });
+
+    $('#volume-ratio').on('input', function() {
+        $('#volume-ratio-value').text($(this).val());
+    });
+
+    // 默认显示高评分策略
+    loadStrategy('top-scoring');
+});
+
+function loadStrategy(strategy) {
+    currentStrategy = strategy;
+
+    // 隐藏所有参数面板
+    $('.strategy-params').hide();
+
+    // 显示对应的参数面板
+    $(`#${strategy}-params`).show();
+
+    // 更新策略说明
+    updateStrategyDescription(strategy);
+
+    // 更新卡片激活状态
+    $('.strategy-card').removeClass('border-primary');
+    $(`.strategy-card[onclick*="${strategy}"]`).addClass('border-primary');
+
+    // 清空结果
+    $('#strategy-result-title').text('请运行策略');
+    $('#strategy-result-desc').text('选择策略并设置参数后点击运行');
+    $('#strategy-result-data').empty();
+    $('#strategy-charts').hide();
+}
+
+function updateStrategyDescription(strategy) {
+    let description = '';
+
+    switch(strategy) {
+        case 'top-scoring':
+            description = `
+                <h6>高评分策略</h6>
+                <p>基于多维度评分模型，综合考虑资金面、技术面、基本面和风险面，选出综合评分最高的股票。</p>
+                <ul>
+                    <li>资金面(40%): 资金流入情况</li>
+                    <li>技术面(30%): 技术指标和趋势</li>
+                    <li>基本面(20%): 板块和行业地位</li>
+                    <li>风险面(10%): 波动性和流动性</li>
+                </ul>
+            `;
+            break;
+
+        case 'capital-flow':
+            description = `
+                <h6>资金流向策略</h6>
+                <p>选择资金连续流入的股票，资金持续流入通常是股价上涨的重要信号。</p>
+                <ul>
+                    <li>连续流入天数: 资金连续净流入的天数</li>
+                    <li>流入比例: 净流入金额占总成交额的比例</li>
+                    <li>大单流入: 关注主力资金的动向</li>
+                    <li>持续性: 资金流入的持续性比单日流入更重要</li>
+                </ul>
+            `;
+            break;
+
+        case 'breakout':
+            description = `
+                <h6>突破策略</h6>
+                <p>选择突破关键均线且放量的股票，通常意味着趋势的转变。</p>
+                <ul>
+                    <li>均线突破: 价格突破重要均线阻力</li>
+                    <li>放量确认: 成交量放大确认突破有效性</li>
+                    <li>阳线确认: 突破日最好是阳线</li>
+                    <li>突破幅度: 突破幅度越大，信号越强</li>
+                </ul>
+            `;
+            break;
+    }
+
+    $('#strategy-description').html(description);
+}
+
+function runStrategy() {
+    $('#strategy-loading').show();
+    $('#strategy-result-data').empty();
+    $('#strategy-charts').hide();
+
+    const tradeDate = $('#trade-date').val();
+    let params = { trade_date: tradeDate };
+    let endpoint = '';
+
+    switch(currentStrategy) {
+        case 'top-scoring':
+            params.min_score = $('#min-score').val();
+            params.max_count = $('#max-count').val();
+            endpoint = '/api/v1/strategy/top-scoring';
+            break;
+
+        case 'capital-flow':
+            params.min_inflow_ratio = $('#min-inflow-ratio').val();
+            params.min_continuity_days = $('#min-continuity-days').val();
+            params.limit = $('#cf-max-count').val();
+            endpoint = '/api/v1/strategy/capital-flow';
+            break;
+
+        case 'breakout':
+            params.ma_period = $('#ma-period').val();
+            params.volume_ratio = $('#volume-ratio').val();
+            params.limit = $('#breakout-max-count').val();
+            endpoint = '/api/v1/strategy/breakout';
+            break;
+    }
+
+    $.get(endpoint, params, function(response) {
+        if (response.code === 0) {
+            displayStrategyResults(response.data);
+        } else {
+            alert('策略运行失败: ' + response.message);
+        }
+        $('#strategy-loading').hide();
+    }).fail(function() {
+        alert('网络错误，请稍后重试');
+        $('#strategy-loading').hide();
+    });
+}
+
+function displayStrategyResults(data) {
+    const strategyName = data.strategy_name || '策略结果';
+    const stockCount = data.count || 0;
+
+    $('#strategy-result-title').text(`${strategyName} (${stockCount}只股票)`);
+    $('#strategy-result-desc').text(`交易日期: ${data.trade_date}`);
+
+    if (stockCount === 0) {
+        $('#strategy-result-data').html(`
+            <tr>
+                <td colspan="7" class="text-center text-muted">
+                    未找到符合条件的股票，请调整参数后重试
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    const tbody = $('#strategy-result-data');
+    tbody.empty();
+
+    data.stocks.forEach((stock, index) => {
+        let scoreCell = '';
+        let keyIndicator = '';
+
+        if (currentStrategy === 'top-scoring') {
+            const score = stock.scores?.total || stock.total_score || 0;
+            const scoreColor = getScoreColor(score);
+            scoreCell = `<span class="badge ${scoreColor}">${score.toFixed(1)}</span>`;
+            keyIndicator = `资金面: ${stock.scores?.capital?.toFixed(1) || 0}`;
+        } else if (currentStrategy === 'capital-flow') {
+            const ratio = stock.inflow_ratio || 0;
+            const days = stock.continuity_days || 0;
+            scoreCell = `<span class="badge bg-success">${ratio.toFixed(1)}%</span>`;
+            keyIndicator = `连续${days}天流入`;
+        } else if (currentStrategy === 'breakout') {
+            const breakRatio = stock.break_ratio || 0;
+            const volumeRatio = stock.volume_ratio || 0;
+            scoreCell = `<span class="badge bg-warning">${breakRatio.toFixed(1)}%</span>`;
+            keyIndicator = `量比: ${volumeRatio.toFixed(1)}`;
+        }
+
+        const changeClass = stock.change_pct > 0 ? 'text-success' : 'text-danger';
+        const changeIcon = stock.change_pct > 0 ? 'bi-arrow-up' : 'bi-arrow-down';
+
+        const row = `
+            <tr>
+                <td><strong>${stock.stock_code}</strong></td>
+                <td>${stock.stock_name}</td>
+                <td>${stock.close_price?.toFixed(2) || '0.00'}</td>
+                <td class="${changeClass}">
+                    <i class="bi ${changeIcon}"></i> ${stock.change_pct?.toFixed(2) || '0.00'}%
+                </td>
+                <td>${scoreCell}</td>
+                <td><small>${keyIndicator}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="analyzeStock('${stock.stock_code}')">
+                        <i class="bi bi-bar-chart"></i> 分析
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        tbody.append(row);
+    });
+
+    // 显示图表
+    if (stockCount > 0) {
+        displayStrategyCharts(data);
+    }
+}
+
+function getScoreColor(score) {
+    if (score >= 80) return 'bg-success';
+    if (score >= 70) return 'bg-warning';
+    if (score >= 60) return 'bg-info';
+    return 'bg-secondary';
+}
+
+function displayStrategyCharts(data) {
+    $('#strategy-charts').show();
+
+    // 评分分布图表
+    if (currentStrategy === 'top-scoring' && data.stocks.length > 0) {
+        const scores = data.stocks.map(s => s.scores?.total || s.total_score || 0);
+        createScoreDistributionChart(scores);
+    }
+
+    // 板块分布图表
+    createBlockDistributionChart(data.stocks);
+}
+
+function createScoreDistributionChart(scores) {
+    const chart = echarts.init(document.getElementById('score-distribution-chart'));
+
+    // 分数区间统计
+    const ranges = [
+        { name: '80-100', min: 80, max: 100, count: 0 },
+        { name: '70-79', min: 70, max: 79, count: 0 },
+        { name: '60-69', min: 60, max: 69, count: 0 },
+        { name: '0-59', min: 0, max: 59, count: 0 }
+    ];
+
+    scores.forEach(score => {
+        for (const range of ranges) {
+            if (score >= range.min && score <= range.max) {
+                range.count++;
+                break;
+            }
+        }
+    });
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        series: [{
+            name: '评分分布',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+                borderRadius: 10,
+                borderColor: '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: true,
+                formatter: '{b}: {c}'
+            },
+            data: ranges.map(range => ({
+                name: range.name,
+                value: range.count,
+                itemStyle: {
+                    color: getScoreColor((range.min + range.max) / 2)
+                }
+            }))
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function createBlockDistributionChart(stocks) {
+    // 这里需要从股票获取板块信息，简化处理
+    const chart = echarts.init(document.getElementById('block-distribution-chart'));
+
+    // 模拟数据
+    const blockData = [
+        { name: '金融', value: Math.floor(Math.random() * 10) + 5 },
+        { name: '消费', value: Math.floor(Math.random() * 8) + 3 },
+        { name: '科技', value: Math.floor(Math.random() * 12) + 4 },
+        { name: '医药', value: Math.floor(Math.random() * 6) + 2 },
+        { name: '制造', value: Math.floor(Math.random() * 7) + 3 }
+    ];
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        series: [{
+            name: '板块分布',
+            type: 'pie',
+            radius: '50%',
+            data: blockData,
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function analyzeStock(stockCode) {
+    window.location.href = `/stock?search=${stockCode}`;
+}
+</script>
+
+<style>
+.strategy-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.strategy-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.strategy-card.border-primary {
+    border: 2px solid #007bff;
+}
+</style>
+{% endblock %}
