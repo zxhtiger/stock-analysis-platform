@@ -1,0 +1,614 @@
+<!-- backend/app/templates/dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}仪表板 - 股票分析平台{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-speedometer2"></i> 监控仪表板</h5>
+                <div class="float-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshDashboard()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="card text-white bg-primary mb-2">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">监控股票</h6>
+                                <h3 id="monitor-count">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-white bg-success mb-2">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">买入信号</h6>
+                                <h3 id="buy-signals">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-white bg-warning mb-2">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">关注信号</h6>
+                                <h3 id="watch-signals">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-white bg-danger mb-2">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">卖出信号</h6>
+                                <h3 id="sell-signals">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-white bg-info mb-2">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">预警数量</h6>
+                                <h3 id="alert-count">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-white bg-dark mb-2">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">更新时间</h6>
+                                <h6 id="update-time">--:--</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-bell"></i> 实时预警</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>股票</th>
+                                <th>预警类型</th>
+                                <th>级别</th>
+                                <th>时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alert-list">
+                            <!-- 预警数据通过JS加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status" id="alert-loading">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-lightning"></i> 快速操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <button class="btn btn-outline-primary w-100" onclick="runTopScoringStrategy()">
+                            <i class="bi bi-star"></i> 高评分选股
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-outline-success w-100" onclick="runCapitalFlowStrategy()">
+                            <i class="bi bi-cash-coin"></i> 资金流向选股
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-outline-warning w-100" onclick="checkMarketStatus()">
+                            <i class="bi bi-graph-up"></i> 市场状态
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-outline-info w-100" onclick="updateAnalysisData()">
+                            <i class="bi bi-arrow-clockwise"></i> 更新数据
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-graph-up"></i> 市场热度</h5>
+            </div>
+            <div class="card-body">
+                <div id="market-heat-chart" style="height: 200px;"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-pie-chart"></i> 板块资金分布</h5>
+            </div>
+            <div class="card-body">
+                <div id="block-fund-chart" style="height: 200px;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> 最近监控</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group" id="recent-monitor">
+                    <!-- 最近监控数据通过JS加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-list-stars"></i> 自选股票</h5>
+                <div class="float-end">
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addStockModal">
+                        <i class="bi bi-plus-circle"></i> 添加
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>股票代码</th>
+                                <th>股票名称</th>
+                                <th>当前价</th>
+                                <th>涨跌幅</th>
+                                <th>资金流入</th>
+                                <th>综合评分</th>
+                                <th>信号</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="watchlist-stocks">
+                            <!-- 自选股票数据通过JS加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加股票模态框 -->
+<div class="modal fade" id="addStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加自选股票</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="stock-search-input" class="form-label">搜索股票</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="stock-search-input"
+                               placeholder="输入股票代码或名称">
+                        <button class="btn btn-outline-secondary" type="button" onclick="searchStockForAdd()">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="search-results-container" style="max-height: 300px; overflow-y: auto;">
+                    <!-- 搜索结果 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 初始化仪表板
+    refreshDashboard();
+
+    // 每30秒自动刷新
+    setInterval(refreshDashboard, 30000);
+
+    // 加载自选股票
+    loadWatchlist();
+});
+
+function refreshDashboard() {
+    updateTime();
+    loadAlerts();
+    loadMarketHeat();
+    loadBlockFundDistribution();
+    loadRecentMonitor();
+    updateCounters();
+}
+
+function updateTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+    $('#update-time').text(timeStr);
+}
+
+function updateCounters() {
+    // 模拟数据
+    $('#monitor-count').text('25');
+    $('#buy-signals').text('8');
+    $('#watch-signals').text('12');
+    $('#sell-signals').text('3');
+    $('#alert-count').text('5');
+}
+
+function loadAlerts() {
+    $('#alert-loading').show();
+
+    // 模拟预警数据
+    const alerts = [
+        { code: '000001', name: '平安银行', type: '资金流出', level: 'warning', time: '14:30' },
+        { code: '000858', name: '五粮液', type: '高换手率', level: 'warning', time: '14:25' },
+        { code: '300059', name: '东方财富', type: '突破压力', level: 'info', time: '14:20' },
+        { code: '600519', name: '贵州茅台', type: '量价背离', level: 'danger', time: '14:15' },
+        { code: '002415', name: '海康威视', type: '主力流入', level: 'success', time: '14:10' }
+    ];
+
+    const tbody = $('#alert-list');
+    tbody.empty();
+
+    alerts.forEach(alert => {
+        const levelClass = getAlertLevelClass(alert.level);
+        const levelText = getAlertLevelText(alert.level);
+
+        const row = `
+            <tr>
+                <td><strong>${alert.code}</strong><br><small>${alert.name}</small></td>
+                <td>${alert.type}</td>
+                <td><span class="badge ${levelClass}">${levelText}</span></td>
+                <td><small>${alert.time}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewStock('${alert.code}')">
+                        查看
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        tbody.append(row);
+    });
+
+    $('#alert-loading').hide();
+}
+
+function getAlertLevelClass(level) {
+    const classes = {
+        'danger': 'bg-danger',
+        'warning': 'bg-warning',
+        'info': 'bg-info',
+        'success': 'bg-success'
+    };
+    return classes[level] || 'bg-secondary';
+}
+
+function getAlertLevelText(level) {
+    const texts = {
+        'danger': '高危',
+        'warning': '警告',
+        'info': '提示',
+        'success': '利好'
+    };
+    return texts[level] || level;
+}
+
+function loadMarketHeat() {
+    const chart = echarts.init(document.getElementById('market-heat-chart'));
+
+    // 模拟市场热度数据
+    const hours = ['09:30', '10:00', '10:30', '11:00', '13:00', '14:00', '14:30'];
+    const heatData = [65, 72, 85, 78, 82, 90, 88];
+
+    const option = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        xAxis: {
+            type: 'category',
+            data: hours
+        },
+        yAxis: {
+            type: 'value',
+            name: '热度指数',
+            max: 100
+        },
+        series: [{
+            data: heatData,
+            type: 'line',
+            smooth: true,
+            lineStyle: {
+                width: 3,
+                color: '#007bff'
+            },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(0, 123, 255, 0.3)' },
+                    { offset: 1, color: 'rgba(0, 123, 255, 0.1)' }
+                ])
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function loadBlockFundDistribution() {
+    const chart = echarts.init(document.getElementById('block-fund-chart'));
+
+    // 模拟板块资金分布数据
+    const blockData = [
+        { name: '金融', value: 28, color: '#4e79a7' },
+        { name: '消费', value: 22, color: '#f28e2c' },
+        { name: '科技', value: 35, color: '#e15759' },
+        { name: '医药', value: 12, color: '#76b7b2' },
+        { name: '制造', value: 18, color: '#59a14f' }
+    ];
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b}: {c}亿 ({d}%)'
+        },
+        series: [{
+            name: '资金分布',
+            type: 'pie',
+            radius: '65%',
+            center: ['50%', '50%'],
+            data: blockData.map(item => ({
+                ...item,
+                itemStyle: { color: item.color }
+            })),
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            }
+        }]
+    };
+
+    chart.setOption(option);
+}
+
+function loadRecentMonitor() {
+    const container = $('#recent-monitor');
+    container.empty();
+
+    // 模拟最近监控数据
+    const monitors = [
+        { code: '000001', name: '平安银行', action: '评分更新', time: '2分钟前' },
+        { code: '300750', name: '宁德时代', action: '预警触发', time: '5分钟前' },
+        { code: '600036', name: '招商银行', action: '资金流入', time: '10分钟前' },
+        { code: '000333', name: '美的集团', action: '突破监控', time: '15分钟前' },
+        { code: '002415', name: '海康威视', action: '趋势分析', time: '20分钟前' }
+    ];
+
+    monitors.forEach(monitor => {
+        const item = `
+            <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${monitor.name} (${monitor.code})</h6>
+                    <small class="text-muted">${monitor.time}</small>
+                </div>
+                <p class="mb-1">${monitor.action}</p>
+            </div>
+        `;
+
+        container.append(item);
+    });
+}
+
+function loadWatchlist() {
+    const tbody = $('#watchlist-stocks');
+    tbody.empty();
+
+    // 模拟自选股票数据
+    const watchlist = [
+        { code: '000001', name: '平安银行', price: 12.35, change: 1.25, inflow: 1.2, score: 85, signal: 'buy' },
+        { code: '000858', name: '五粮液', price: 156.80, change: -0.85, inflow: -0.5, score: 78, signal: 'hold' },
+        { code: '300059', name: '东方财富', price: 15.20, change: 2.15, inflow: 0.8, score: 82, signal: 'buy' },
+        { code: '600519', name: '贵州茅台', price: 1680.50, change: 0.45, inflow: 2.5, score: 88, signal: 'buy' },
+        { code: '002415', name: '海康威视', price: 34.20, change: -1.25, inflow: -0.3, score: 72, signal: 'watch' }
+    ];
+
+    watchlist.forEach(stock => {
+        const changeClass = stock.change > 0 ? 'text-success' : 'text-danger';
+        const changeIcon = stock.change > 0 ? 'bi-arrow-up' : 'bi-arrow-down';
+        const inflowClass = stock.inflow > 0 ? 'text-success' : 'text-danger';
+        const signalClass = getSignalClass(stock.signal);
+        const signalText = getSignalText(stock.signal);
+
+        const row = `
+            <tr>
+                <td><strong>${stock.code}</strong></td>
+                <td>${stock.name}</td>
+                <td>${stock.price.toFixed(2)}</td>
+                <td class="${changeClass}">
+                    <i class="bi ${changeIcon}"></i> ${stock.change.toFixed(2)}%
+                </td>
+                <td class="${inflowClass}">${stock.inflow > 0 ? '+' : ''}${stock.inflow.toFixed(1)}亿</td>
+                <td><span class="badge bg-info">${stock.score}</span></td>
+                <td><span class="badge ${signalClass}">${signalText}</span></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="viewStock('${stock.code}')">
+                            分析
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="removeFromWatchlist('${stock.code}')">
+                            删除
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        tbody.append(row);
+    });
+}
+
+function getSignalClass(signal) {
+    const classes = {
+        'buy': 'bg-success',
+        'hold': 'bg-secondary',
+        'watch': 'bg-warning',
+        'sell': 'bg-danger'
+    };
+    return classes[signal] || 'bg-secondary';
+}
+
+function getSignalText(signal) {
+    const texts = {
+        'buy': '买入',
+        'hold': '持有',
+        'watch': '关注',
+        'sell': '卖出'
+    };
+    return texts[signal] || signal;
+}
+
+function searchStockForAdd() {
+    const keyword = $('#stock-search-input').val().trim();
+    if (!keyword) {
+        alert('请输入股票代码或名称');
+        return;
+    }
+
+    const container = $('#search-results-container');
+    container.html('<div class="text-center"><div class="spinner-border spinner-border-sm"></div> 搜索中...</div>');
+
+    // 模拟搜索
+    setTimeout(() => {
+        const results = [
+            { code: '000001', name: '平安银行', market: 'SZ' },
+            { code: '000002', name: '万科A', market: 'SZ' },
+            { code: '000858', name: '五粮液', market: 'SZ' }
+        ].filter(item =>
+            item.code.includes(keyword) ||
+            item.name.includes(keyword)
+        );
+
+        if (results.length === 0) {
+            container.html('<div class="alert alert-warning">未找到相关股票</div>');
+            return;
+        }
+
+        let html = '<div class="list-group">';
+        results.forEach(stock => {
+            html += `
+                <div class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${stock.name}</h6>
+                        <small>${stock.market}</small>
+                    </div>
+                    <p class="mb-1">代码: ${stock.code}</p>
+                    <button class="btn btn-sm btn-primary" onclick="addToWatchlist('${stock.code}', '${stock.name}')">
+                        <i class="bi bi-plus"></i> 添加
+                    </button>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.html(html);
+    }, 500);
+}
+
+function addToWatchlist(code, name) {
+    // 这里应该发送请求到后端保存
+    alert(`已添加 ${name}(${code}) 到自选`);
+    $('#addStockModal').modal('hide');
+    loadWatchlist();
+}
+
+function removeFromWatchlist(code) {
+    if (confirm('确定要从自选列表中删除吗？')) {
+        // 这里应该发送请求到后端删除
+        alert('已删除');
+        loadWatchlist();
+    }
+}
+
+function viewStock(code) {
+    window.location.href = `/stock?search=${code}`;
+}
+
+function runTopScoringStrategy() {
+    window.location.href = '/strategy';
+}
+
+function runCapitalFlowStrategy() {
+    window.location.href = '/strategy';
+}
+
+function checkMarketStatus() {
+    // 这里可以添加市场状态检查逻辑
+    alert('市场状态检查功能开发中...');
+}
+
+function updateAnalysisData() {
+    // 这里可以添加数据更新逻辑
+    alert('数据更新功能开发中...');
+}
+</script>
+
+<style>
+.card .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+#recent-monitor {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#search-results-container {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+}
+</style>
+{% endblock %}
